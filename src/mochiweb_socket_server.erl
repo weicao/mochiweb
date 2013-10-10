@@ -28,6 +28,7 @@
          acceptor_pool_size=16,
          ssl=false,
          ssl_opts=[{ssl_imp, new}],
+         keepalive = false,
          acceptor_pool=sets:new(),
          profile_fun=undefined}).
 
@@ -126,6 +127,8 @@ parse_options([{ssl, Ssl} | Rest], State) when is_boolean(Ssl) ->
 parse_options([{ssl_opts, SslOpts} | Rest], State) when is_list(SslOpts) ->
     SslOpts1 = [{ssl_imp, new} | proplists:delete(ssl_imp, SslOpts)],
     parse_options(Rest, State#mochiweb_socket_server{ssl_opts=SslOpts1});
+parse_options([{keepalive, Keepalive} | Rest], State) when is_boolean(Keepalive) ->
+    parse_options(Rest, State#mochiweb_socket_server{keepalive = Keepalive});
 parse_options([{profile_fun, ProfileFun} | Rest], State) when is_function(ProfileFun) ->
     parse_options(Rest, State#mochiweb_socket_server{profile_fun=ProfileFun}).
 
@@ -159,7 +162,7 @@ ipv6_supported() ->
             false
     end.
 
-init(State=#mochiweb_socket_server{ip=Ip, port=Port, backlog=Backlog, nodelay=NoDelay}) ->
+init(State=#mochiweb_socket_server{ip=Ip, port=Port, backlog=Backlog, nodelay=NoDelay, keepalive = Keepalive}) ->
     process_flag(trap_exit, true),
     BaseOpts = [binary,
                 {reuseaddr, true},
@@ -167,7 +170,8 @@ init(State=#mochiweb_socket_server{ip=Ip, port=Port, backlog=Backlog, nodelay=No
                 {backlog, Backlog},
                 {recbuf, ?RECBUF_SIZE},
                 {active, false},
-                {nodelay, NoDelay}],
+                {nodelay, NoDelay},
+                {keepalive, Keepalive}],
     Opts = case Ip of
         any ->
             case ipv6_supported() of % IPv4, and IPv6 if supported
